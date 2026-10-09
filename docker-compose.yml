@@ -9,6 +9,7 @@ services:
       - '3000:3000'
     environment:
       NODE_ENV: production
+      INTERNAL_API_URL: http://backend:3001
     depends_on:
       - backend
 
@@ -21,6 +22,9 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
+      MONGODB_URI: mongodb://mongodb:27017/readers-bookclub
+      REDIS_URL: redis://redis:6379
+      CORS_ORIGIN: http://localhost:3000
     depends_on:
       - mongodb
       - redis
