@@ -19,7 +19,7 @@ variable "subnet_id" {
 variable "instance_type" {
   description = "t3.large (8 GB). Next.js builds run out of memory on smaller instances."
   type        = string
-  default     = "t3.large"
+  default     = "t3.medium"
 }
 
 variable "volume_size" {

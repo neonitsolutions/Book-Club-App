@@ -69,9 +69,16 @@ docker push $REGISTRY/readers-bookclub-frontend:latest
 Jenkins' first admin password (the server takes about 5 minutes to install everything):
 
 ```bash
+# Needs the Session Manager plugin for the AWS CLI:
+# https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html
 aws ssm start-session --target $(terraform output -raw jenkins_instance_id)
+
+# then, inside the session (wait for the remote prompt):
 sudo cat /var/lib/jenkins/secrets/initialAdminPassword
 ```
+
+If the file is not there, the install is still running or failed; check
+`/var/log/cloud-init-output.log` on the server.
 
 ### 3. Staging (repeat the same steps for production)
 

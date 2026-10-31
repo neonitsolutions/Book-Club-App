@@ -47,7 +47,7 @@ resource "aws_vpc_security_group_ingress_rule" "https" {
 # Caddy answers the challenge and redirects everything else to HTTPS.
 resource "aws_vpc_security_group_ingress_rule" "http" {
   security_group_id = aws_security_group.this.id
-  description       = "HTTP for Let's Encrypt, redirected to HTTPS"
+  description       = "HTTP for Lets Encrypt, redirected to HTTPS"
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "tcp"
   from_port         = 80
