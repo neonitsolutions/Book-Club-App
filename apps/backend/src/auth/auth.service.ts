@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
-import * as argon2 from 'argon2';
+import * as argon2 from '@node-rs/argon2';
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { Model, isValidObjectId } from 'mongoose';
 import { PublicUser, UserDocument, toPublicUser } from '../users/user.schema';
