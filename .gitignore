@@ -34,3 +34,13 @@ Thumbs.db
 *.pem
 .turbo/
 .vercel/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+*.tfvars
+!*.tfvars.example
+infrastructure/terraform/envs/backend.hcl
