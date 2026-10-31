@@ -1,0 +1,87 @@
+#!/bin/bash
+# Runs once, on the first boot of the Jenkins server (Ubuntu 24.04).
+# Output: /var/log/cloud-init-output.log
+set -euxo pipefail
+export DEBIAN_FRONTEND=noninteractive
+
+# 4 GB swap: a memory spike during `next build` slows the build down instead of
+# the kernel killing Jenkins
+fallocate -l 4G /swapfile
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+echo 'vm.swappiness=10' > /etc/sysctl.d/99-swappiness.conf
+sysctl --system
+
+apt-get update
+apt-get install -y ca-certificates curl gnupg unzip jq git fontconfig openjdk-21-jre-headless
+install -m 0755 -d /etc/apt/keyrings
+
+# Docker
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+  > /etc/apt/sources.list.d/docker.list
+
+# Jenkins LTS
+curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key -o /etc/apt/keyrings/jenkins-keyring.asc
+echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" \
+  > /etc/apt/sources.list.d/jenkins.list
+
+# Trivy (image scanning)
+curl -fsSL https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor -o /etc/apt/keyrings/trivy.gpg
+echo "deb [signed-by=/etc/apt/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" \
+  > /etc/apt/sources.list.d/trivy.list
+
+# Caddy (HTTPS in front of Jenkins, automatic Let's Encrypt certificate)
+curl -fsSL https://dl.cloudsmith.io/public/caddy/stable/gpg.key | gpg --dearmor -o /etc/apt/keyrings/caddy.gpg
+echo "deb [signed-by=/etc/apt/keyrings/caddy.gpg] https://dl.cloudsmith.io/public/caddy/stable/deb/debian any-version main" \
+  > /etc/apt/sources.list.d/caddy.list
+
+# Node.js 20 (matches the app Dockerfiles)
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin jenkins trivy caddy nodejs
+
+# AWS CLI v2
+curl -fsSL https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o /tmp/awscliv2.zip
+unzip -q /tmp/awscliv2.zip -d /tmp
+/tmp/aws/install
+rm -rf /tmp/aws /tmp/awscliv2.zip
+
+# Pipelines run `docker build`
+usermod -aG docker jenkins
+
+# Jenkins listens on localhost only; the outside world goes through Caddy on 443
+mkdir -p /etc/systemd/system/jenkins.service.d
+cat > /etc/systemd/system/jenkins.service.d/override.conf <<'EOF'
+[Service]
+Environment="JENKINS_LISTEN_ADDRESS=127.0.0.1"
+EOF
+
+# One build at a time: two parallel Next.js + Docker builds do not fit in memory
+mkdir -p /var/lib/jenkins/init.groovy.d
+cat > /var/lib/jenkins/init.groovy.d/executors.groovy <<'EOF'
+import jenkins.model.Jenkins
+Jenkins.get().setNumExecutors(1)
+Jenkins.get().save()
+EOF
+chown -R jenkins:jenkins /var/lib/jenkins/init.groovy.d
+
+cat > /etc/caddy/Caddyfile <<'EOF'
+${jenkins_domain} {
+  reverse_proxy 127.0.0.1:8080
+}
+EOF
+
+systemctl daemon-reload
+systemctl enable --now docker
+systemctl enable jenkins
+systemctl restart jenkins caddy
+
+# Weekly clean-up of old Docker images so the disk does not fill up
+cat > /etc/cron.weekly/docker-prune <<'EOF'
+#!/bin/sh
+docker system prune -af --filter "until=168h"
+EOF
+chmod +x /etc/cron.weekly/docker-prune
