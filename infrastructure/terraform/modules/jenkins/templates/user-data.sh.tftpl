@@ -4,6 +4,16 @@
 set -euxo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
+# 4 GB swap: a memory spike during `next build` slows the build down instead of
+# the kernel killing Jenkins
+fallocate -l 4G /swapfile
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+echo 'vm.swappiness=10' > /etc/sysctl.d/99-swappiness.conf
+sysctl --system
+
 apt-get update
 apt-get install -y ca-certificates curl gnupg unzip jq git fontconfig openjdk-21-jre-headless
 install -m 0755 -d /etc/apt/keyrings
@@ -48,6 +58,15 @@ cat > /etc/systemd/system/jenkins.service.d/override.conf <<'EOF'
 [Service]
 Environment="JENKINS_LISTEN_ADDRESS=127.0.0.1"
 EOF
+
+# One build at a time: two parallel Next.js + Docker builds do not fit in memory
+mkdir -p /var/lib/jenkins/init.groovy.d
+cat > /var/lib/jenkins/init.groovy.d/executors.groovy <<'EOF'
+import jenkins.model.Jenkins
+Jenkins.get().setNumExecutors(1)
+Jenkins.get().save()
+EOF
+chown -R jenkins:jenkins /var/lib/jenkins/init.groovy.d
 
 cat > /etc/caddy/Caddyfile <<'EOF'
 ${jenkins_domain} {

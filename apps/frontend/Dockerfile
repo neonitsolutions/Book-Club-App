@@ -4,6 +4,8 @@ COPY package*.json ./
 RUN npm ci
 
 FROM deps AS build
+# Keeps `next build` within the 4 GB Jenkins server (build stage only, not the runtime image)
+ENV NODE_OPTIONS=--max-old-space-size=2048
 COPY . .
 RUN npm run build
 

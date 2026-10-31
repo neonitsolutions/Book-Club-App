@@ -74,6 +74,66 @@ sudo cat /var/lib/jenkins/secrets/initialAdminPassword
 
 Open `http://<SERVER_IP>:8080` in a browser and finish the setup wizard with that password.
 
+## Step 5: Fit builds into 4 GB of memory
+
+Needed on a `t3.medium`; harmless on bigger instances.
+
+Add 4 GB of swap, so a memory spike during `next build` slows the build down instead of the kernel killing Jenkins:
+
+```bash
+sudo dd if=/dev/zero of=/swapfile bs=1M count=4096   # Amazon Linux's XFS does not support fallocate for swap
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+echo 'vm.swappiness=10' | sudo tee /etc/sysctl.d/99-swappiness.conf
+sudo sysctl --system
+free -h   # the Swap line should show 4.0Gi
+```
+
+Run one build at a time:
+
+```bash
+sudo mkdir -p /var/lib/jenkins/init.groovy.d
+sudo tee /var/lib/jenkins/init.groovy.d/executors.groovy > /dev/null <<'EOF'
+import jenkins.model.Jenkins
+Jenkins.get().setNumExecutors(1)
+Jenkins.get().save()
+EOF
+sudo chown -R jenkins:jenkins /var/lib/jenkins/init.groovy.d
+sudo systemctl restart jenkins
+```
+
+Check under **Manage Jenkins → Nodes → Built-In Node**: it should show 1 executor.
+
+## Step 6: Install the tools the Jenkinsfile uses
+
+Node.js 20 (lint and tests run on the server) and Trivy (security scans). The AWS CLI v2 is preinstalled on Amazon Linux.
+
+```bash
+curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+sudo dnf install -y nodejs
+
+sudo tee /etc/yum.repos.d/trivy.repo > /dev/null <<'EOF'
+[trivy]
+name=Trivy repository
+baseurl=https://aquasecurity.github.io/trivy-repo/rpm/releases/$basearch/
+gpgcheck=1
+enabled=1
+gpgkey=https://aquasecurity.github.io/trivy-repo/rpm/public.key
+EOF
+sudo dnf install -y trivy
+
+node --version && trivy --version && aws --version
+```
+
+## Step 7: Create the pipeline
+
+1. Install plugins (**Manage Jenkins → Plugins**): *Pipeline*, *Git*, *GitHub Branch Source*, *Workspace Cleanup*. Most come with the suggested plugins.
+2. Give the instance an IAM role with ECR push and ECS deploy permissions (the `jenkins` Terraform module has the exact policy).
+3. Set the global environment variables (**Manage Jenkins → System → Global properties**): `AWS_REGION`, `STAGING_URL`, `PRODUCTION_URL`.
+4. **New Item → Multibranch Pipeline**, add the GitHub repository as the branch source, and leave *Script Path* as `Jenkinsfile`.
+
 ## Troubleshooting
 
 | Problem | Fix |
