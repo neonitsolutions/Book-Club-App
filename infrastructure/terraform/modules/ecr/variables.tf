@@ -7,5 +7,5 @@ variable "repository_names" {
 variable "keep_build_images" {
   description = "How many build images to keep per repository (release versions are always kept)."
   type        = number
-  default     = 30
+  default     = 20
 }
