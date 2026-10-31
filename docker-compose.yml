@@ -25,6 +25,7 @@ services:
       MONGODB_URI: mongodb://mongodb:27017/readers-bookclub
       REDIS_URL: redis://redis:6379
       CORS_ORIGIN: http://localhost:3000
+      JWT_ACCESS_SECRET: local-docker-compose-secret-change-me-32+
     depends_on:
       - mongodb
       - redis
