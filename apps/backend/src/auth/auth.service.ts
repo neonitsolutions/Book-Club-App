@@ -82,23 +82,32 @@ export class AuthService {
       throw new UnauthorizedException(INVALID_SESSION);
     }
 
-    const session = await this.sessions.findById(sessionId).exec();
-    if (!session || session.expiresAt <= new Date()) {
-      throw new UnauthorizedException(INVALID_SESSION);
-    }
-
     const presented = sha256(secret);
-    if (!hashesEqual(presented, session.tokenHash)) {
-      const justRotated =
-        session.previousTokenHash !== undefined &&
-        hashesEqual(presented, session.previousTokenHash) &&
-        !!session.rotatedAt &&
-        Date.now() - session.rotatedAt.getTime() < ROTATION_GRACE_MS;
-      if (!justRotated) {
-        // An already-used token: someone else has a copy. End the session so
-        // neither copy works any more.
-        await session.deleteOne();
-      }
+    const newSecret = randomBytes(32).toString('base64url');
+    const now = new Date();
+
+    // One atomic read-and-write: of several requests presenting the same
+    // token at once, exactly one matches and rotates it. A separate read then
+    // save would let each of them issue its own token, all but one unusable.
+    const session = await this.sessions
+      .findOneAndUpdate(
+        { _id: sessionId, tokenHash: presented, expiresAt: { $gt: now } },
+        {
+          $set: {
+            previousTokenHash: presented,
+            rotatedAt: now,
+            tokenHash: sha256(newSecret),
+            expiresAt: new Date(
+              now.getTime() + REFRESH_TOKEN_TTL_SECONDS * 1000,
+            ),
+          },
+        },
+        { new: true },
+      )
+      .exec();
+
+    if (!session) {
+      await this.rejectStaleToken(sessionId, presented);
       throw new UnauthorizedException(INVALID_SESSION);
     }
 
@@ -108,13 +117,6 @@ export class AuthService {
       throw new UnauthorizedException(INVALID_SESSION);
     }
 
-    const newSecret = randomBytes(32).toString('base64url');
-    session.previousTokenHash = session.tokenHash;
-    session.rotatedAt = new Date();
-    session.tokenHash = sha256(newSecret);
-    session.expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000);
-    await session.save();
-
     return {
       user: toPublicUser(user),
       accessToken: await this.signAccessToken(user),
@@ -123,10 +125,40 @@ export class AuthService {
   }
 
   async logout(refreshToken: string | undefined): Promise<void> {
-    const [sessionId] = (refreshToken ?? '').split('.');
-    if (sessionId && isValidObjectId(sessionId)) {
-      await this.sessions.deleteOne({ _id: sessionId }).exec();
-    }
+    const [sessionId, secret] = (refreshToken ?? '').split('.');
+    if (!sessionId || !secret || !isValidObjectId(sessionId)) return;
+
+    // Only the holder of the token can end the session, not anyone who
+    // learns its id
+    const hash = sha256(secret);
+    await this.sessions
+      .deleteOne({
+        _id: sessionId,
+        $or: [{ tokenHash: hash }, { previousTokenHash: hash }],
+      })
+      .exec();
+  }
+
+  /**
+   * The token did not match the current one. If it is the one replaced in
+   * the last few seconds, another tab just refreshed: refuse, but keep the
+   * session (the browser already has the new cookies). Anything older means
+   * a copy of the token is in someone else's hands: end the session so
+   * neither copy works.
+   */
+  private async rejectStaleToken(
+    sessionId: string,
+    presented: string,
+  ): Promise<void> {
+    const session = await this.sessions.findById(sessionId).exec();
+    if (!session) return;
+
+    const justRotated =
+      session.previousTokenHash !== undefined &&
+      hashesEqual(presented, session.previousTokenHash) &&
+      !!session.rotatedAt &&
+      Date.now() - session.rotatedAt.getTime() < ROTATION_GRACE_MS;
+    if (!justRotated) await session.deleteOne();
   }
 
   async me(userId: string): Promise<PublicUser> {
