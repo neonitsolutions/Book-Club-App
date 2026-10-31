@@ -4,6 +4,7 @@ describe('validateEnv', () => {
   const valid = {
     MONGODB_URI: 'mongodb://localhost:27017/test',
     REDIS_URL: 'redis://localhost:6379',
+    JWT_ACCESS_SECRET: 'a'.repeat(32),
   };
 
   it('applies defaults and splits CORS origins', () => {
@@ -20,5 +21,11 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ REDIS_URL: valid.REDIS_URL })).toThrow(
       /MONGODB_URI/,
     );
+  });
+
+  it('rejects a short JWT secret', () => {
+    expect(() =>
+      validateEnv({ ...valid, JWT_ACCESS_SECRET: 'too-short' }),
+    ).toThrow(/JWT_ACCESS_SECRET/);
   });
 });

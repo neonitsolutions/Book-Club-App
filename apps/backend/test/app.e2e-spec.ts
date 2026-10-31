@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import * as request from 'supertest';
-import { App } from 'supertest/types';
+import { configureApp } from './../src/app.setup';
 import { REDIS_CLIENT } from './../src/redis/redis.module';
 
 type HealthBody = {
@@ -12,7 +12,7 @@ type HealthBody = {
 };
 
 describe('AppController (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: NestExpressApplication;
   let mongo: MongoMemoryServer;
   const redis = { ping: jest.fn(), quit: jest.fn() };
 
@@ -22,6 +22,8 @@ describe('AppController (e2e)', () => {
     process.env.LOG_LEVEL = 'error';
     process.env.MONGODB_URI = mongo.getUri();
     process.env.REDIS_URL = 'redis://unused:6379';
+    process.env.JWT_ACCESS_SECRET =
+      'test-secret-that-is-at-least-32-characters';
 
     // Imported here, not at the top: ConfigModule validates the environment
     // as soon as AppModule loads, so the variables above must be set first.
@@ -34,8 +36,8 @@ describe('AppController (e2e)', () => {
       .useValue(redis)
       .compile();
 
-    app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api');
+    app = moduleFixture.createNestApplication<NestExpressApplication>();
+    configureApp(app);
     await app.init();
   }, 120_000);
 

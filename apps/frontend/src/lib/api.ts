@@ -25,12 +25,41 @@ function apiUrl(path: string): string {
   return `${base}${cleanPath}`;
 }
 
-export async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(apiUrl(path), {
+// Endpoints that must not trigger a token refresh when they return 401
+const NO_REFRESH = ["/auth/login", "/auth/register", "/auth/refresh", "/auth/logout"];
+
+// One refresh at a time: parallel 401s share it instead of each rotating the token
+let refreshing: Promise<boolean> | null = null;
+
+function refreshSession(): Promise<boolean> {
+  refreshing ??= fetch(apiUrl("/auth/refresh"), { method: "POST", credentials: "include" })
+    .then((res) => res.ok)
+    .catch(() => false)
+    .finally(() => {
+      refreshing = null;
+    });
+  return refreshing;
+}
+
+function send(path: string, init?: RequestInit): Promise<Response> {
+  return fetch(apiUrl(path), {
     ...init,
     credentials: "include",
     headers: { "Content-Type": "application/json", ...init?.headers },
   });
+}
+
+export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  let res = await send(path, init);
+
+  // The access token lasts 15 minutes; get a new one and try once more.
+  // Retry even if this refresh failed: another tab may have just refreshed.
+  if (res.status === 401 && typeof window !== "undefined" && !NO_REFRESH.includes(path)) {
+    await refreshSession();
+    res = await send(path, init);
+  }
+
+  if (res.status === 204) return undefined as T;
   const body = res.headers.get("content-type")?.includes("application/json")
     ? await res.json()
     : await res.text();

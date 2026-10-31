@@ -23,7 +23,7 @@ variable "alarm_email" {
 variable "backend_secret_keys" {
   description = "Keys you must put in the rbc/<env>/backend secret. Add JWT and payment keys here as the backend starts reading them."
   type        = list(string)
-  default     = ["MONGODB_URI"]
+  default     = ["MONGODB_URI", "JWT_ACCESS_SECRET"]
 }
 
 variable "initial_image_tag" {

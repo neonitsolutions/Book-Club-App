@@ -14,6 +14,10 @@ const envSchema = z.object({
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])
     .default('info'),
+  // Signs access tokens. Generate with: openssl rand -base64 48
+  JWT_ACCESS_SECRET: z
+    .string()
+    .min(32, 'must be at least 32 characters (openssl rand -base64 48)'),
 });
 
 export type Env = z.infer<typeof envSchema>;

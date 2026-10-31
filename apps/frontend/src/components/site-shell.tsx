@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { BookOpenText, ShoppingCart, Sparkles, UserCircle2 } from 'lucide-react';
+import { BookOpenText, ShoppingCart, Sparkles } from 'lucide-react';
+import { AccountMenu } from '@/components/auth/account-menu';
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
   return (
@@ -30,10 +31,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
               <ShoppingCart className="h-4 w-4" />
               Cart
             </Link>
-            <Link href="/login" className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-amber-400">
-              <UserCircle2 className="h-4 w-4" />
-              Sign in
-            </Link>
+            <AccountMenu />
           </div>
         </div>
       </header>
