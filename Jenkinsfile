@@ -1,11 +1,12 @@
 // Readers Book Club CI/CD
 //
 // Run as a Multibranch Pipeline. Every branch and pull request is linted and tested;
-// only `main` builds images, deploys to staging, and (after approval) to production.
+// only `main` builds images, deploys to staging (when DEPLOY_STAGING is 'true'), and
+// (after approval) to production.
 //
 // Jenkins setup (Manage Jenkins -> System -> Global properties -> Environment variables):
 //   AWS_REGION      e.g. eu-west-1
-//   STAGING_URL     e.g. https://staging.example.com
+//   STAGING_URL     e.g. https://staging.example.com (only used when DEPLOY_STAGING is 'true')
 //   PRODUCTION_URL  e.g. https://example.com
 // AWS access comes from the Jenkins server's IAM role; no keys are stored in Jenkins.
 // Plugins used: Pipeline, Git, Workspace Cleanup (cleanWs).
@@ -27,10 +28,13 @@ pipeline {
     // npm and the test tools need far less than a Next.js build; keep them modest
     NODE_OPTIONS  = '--max-old-space-size=1536'
     CI            = 'true'
+    // Staging is torn down until launch to save cost (see infrastructure/terraform/README.md).
+    // Set to 'true' once `terraform apply` has recreated envs/staging.
+    DEPLOY_STAGING = 'false'
   }
 
   stages {
-    stage('Build, test and deploy to staging') {
+    stage('Build and test') {
       agent any
       options {
         timeout(time: 45, unit: 'MINUTES')
@@ -125,7 +129,12 @@ pipeline {
         }
 
         stage('Deploy to staging') {
-          when { branch 'main' }
+          when {
+            allOf {
+              branch 'main'
+              environment name: 'DEPLOY_STAGING', value: 'true'
+            }
+          }
           steps {
             sh 'infrastructure/scripts/ecs-deploy.sh rbc-staging backend  backend  "$REGISTRY/$BACKEND_REPO:$IMAGE_TAG"'
             sh 'infrastructure/scripts/ecs-deploy.sh rbc-staging frontend frontend "$REGISTRY/$FRONTEND_REPO:$IMAGE_TAG"'
