@@ -202,6 +202,32 @@ describe('Auth (e2e)', () => {
       await refreshWith(current).expect(200); // still signed in
     });
 
+    it('keeps the session when refreshes arrive truly in parallel', async () => {
+      const shared = await signIn();
+      const results = await Promise.all(
+        Array.from({ length: 5 }, () => refreshWith(shared)),
+      );
+
+      // Exactly one request wins the rotation; the others are told to retry
+      const winners = results.filter((r) => r.status === 200);
+      expect(winners).toHaveLength(1);
+      expect(results.filter((r) => r.status === 401)).toHaveLength(4);
+
+      // ...and the winner's new token still works: nobody was signed out
+      await refreshWith(cookiesFrom(winners[0]).refresh_token).expect(200);
+    });
+
+    it('logout needs the real token, not just the session id', async () => {
+      const token = await signIn();
+      const [sessionId] = token.split('.');
+
+      await http()
+        .post('/api/auth/logout')
+        .set('Cookie', `refresh_token=${sessionId}.forged-secret`)
+        .expect(204);
+      await refreshWith(token).expect(200); // still signed in
+    });
+
     it('rejects garbage tokens', async () => {
       await refreshWith('nonsense').expect(401);
       await refreshWith('6560a1b2c3d4e5f6a7b8c9d0.secret').expect(401);
