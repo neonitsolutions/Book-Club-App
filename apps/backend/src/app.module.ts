@@ -4,10 +4,20 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
+import { BooksModule } from './books/books.module';
 import { Env, validateEnv } from './config/env.validation';
+import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { OrdersModule } from './orders/orders.module';
+import { PaymentsModule } from './payments/payments.module';
 import { RedisModule } from './redis/redis.module';
+import { RentalsModule } from './rentals/rentals.module';
+import { ScansModule } from './scans/scans.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -41,10 +51,20 @@ import { UsersModule } from './users/users.module';
         serverSelectionTimeoutMS: 5000,
       }),
     }),
+    DatabaseModule,
     RedisModule,
     HealthModule,
     UsersModule,
     AuthModule,
+    BooksModule,
+    InventoryModule,
+    SubscriptionsModule,
+    PaymentsModule,
+    RentalsModule,
+    OrdersModule,
+    ScansModule,
+    NotificationsModule,
+    AuditModule,
   ],
   controllers: [AppController],
   providers: [AppService],
