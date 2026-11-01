@@ -141,5 +141,12 @@ Click the confirmation link AWS emails to `alarm_email`, or alarms will not arri
 cd envs/staging && terraform destroy
 ```
 
+Staging is torn down until launch, and the `Jenkinsfile` has `DEPLOY_STAGING = 'false'`, so `main`
+goes straight from tests to the production approval. To bring it back:
+
+1. Steps 3a–3c above (the secret is deleted with the stack and must be set again).
+2. Add the new `nat_public_ips` to Atlas → Network Access.
+3. Set `DEPLOY_STAGING = 'true'` in the `Jenkinsfile` and merge to `main`.
+
 Production has deletion protection on the load balancer and a non-empty media bucket cannot be
 deleted; both are on purpose.
