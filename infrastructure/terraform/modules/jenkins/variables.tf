@@ -51,7 +51,15 @@ variable "admin_cidrs" {
 variable "github_webhook_cidrs" {
   description = "GitHub's webhook source ranges. Check the \"hooks\" list at https://api.github.com/meta and update if it changes."
   type        = list(string)
-  default     = ["192.30.252.0/22", "185.199.108.0/22", "140.82.112.0/20", "143.55.64.0/20"]
+  default = [
+    "192.30.252.0/22",
+    "185.199.108.0/22",
+    "140.82.112.0/20",
+    "143.55.64.0/20",
+    "9.234.98.160/28",
+    "9.234.98.176/28",
+    "9.234.106.48/28",
+  ]
 }
 
 variable "ecr_repository_arns" {

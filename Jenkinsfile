@@ -4,10 +4,7 @@
 // only `main` builds images, deploys to staging (when DEPLOY_STAGING is 'true'), and
 // (after approval) to production.
 //
-// Jenkins setup (Manage Jenkins -> System -> Global properties -> Environment variables):
-//   AWS_REGION      e.g. eu-west-1
-//   STAGING_URL     e.g. https://staging.example.com (only used when DEPLOY_STAGING is 'true')
-//   PRODUCTION_URL  e.g. https://example.com
+// Region and URLs are set in the environment block below, not in Jenkins.
 // AWS access comes from the Jenkins server's IAM role; no keys are stored in Jenkins.
 // Plugins used: Pipeline, Git, Workspace Cleanup (cleanWs).
 //
@@ -23,6 +20,10 @@ pipeline {
   }
 
   environment {
+    AWS_REGION     = 'eu-west-1'
+    PRODUCTION_URL = 'https://teeblissreadersclub.click'
+    // Only used when DEPLOY_STAGING is 'true'
+    STAGING_URL    = 'https://staging.teeblissreadersclub.click'
     FRONTEND_REPO = 'readers-bookclub-frontend'
     BACKEND_REPO  = 'readers-bookclub-backend'
     // npm and the test tools need far less than a Next.js build; keep them modest
