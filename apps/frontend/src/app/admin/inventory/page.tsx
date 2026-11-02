@@ -1,9 +1,11 @@
+import { RequireAdmin } from '@/components/auth/require-auth';
 import { SiteShell } from '@/components/site-shell';
 import { inventoryItems } from '@/lib/mock-data';
 
 export default function AdminInventoryPage() {
   return (
     <SiteShell>
+      <RequireAdmin>
       <div className="mb-8">
         <p className="text-sm uppercase tracking-[0.2em] text-amber-300">Inventory</p>
         <h1 className="mt-2 text-3xl font-semibold text-white">Book copy tracking</h1>
@@ -33,6 +35,7 @@ export default function AdminInventoryPage() {
           </tbody>
         </table>
       </div>
+          </RequireAdmin>
     </SiteShell>
   );
 }

@@ -57,10 +57,18 @@ export function useAuthActions() {
   const setUser = (user: User | null) => queryClient.setQueryData(SESSION_KEY, user);
 
   return {
-    async register(input: RegisterInput) {
-      const { user } = await api<{ user: User }>('/auth/register', {
+    /** Creates the account and emails an activation link; does not sign in. */
+    async register(input: RegisterInput): Promise<{ email: string }> {
+      return api<{ email: string }>('/auth/register', {
         method: 'POST',
         body: JSON.stringify(input),
+      });
+    },
+    /** Uses the emailed link's token; activates the account and signs in. */
+    async verifyEmail(token: string) {
+      const { user } = await api<{ user: User }>('/auth/verify-email', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
       });
       setUser(user);
     },
@@ -79,8 +87,28 @@ export function useAuthActions() {
   };
 }
 
+/** Sends a new activation link. Always succeeds, whether or not the email has an account. */
+export function resendVerification(email: string): Promise<void> {
+  return api<void>('/auth/resend-verification', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+/** Sign-in refused because the account has not been activated yet. */
+export function isEmailNotVerified(error: unknown): boolean {
+  return (
+    error instanceof ApiError &&
+    error.status === 403 &&
+    (error.body as { code?: string } | null)?.code === 'EMAIL_NOT_VERIFIED'
+  );
+}
+
 /** A message for the person filling in the form. */
 export function authErrorMessage(error: unknown): string {
+  if (isEmailNotVerified(error)) {
+    return 'Your account is not active yet. Open the link we emailed you, or send a new one below.';
+  }
   if (error instanceof ApiError) {
     if (error.status === 401) return 'Invalid email or password.';
     if (error.status === 409) return 'An account with this email already exists. Try signing in.';

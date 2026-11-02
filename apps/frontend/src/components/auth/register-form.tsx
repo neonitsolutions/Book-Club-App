@@ -1,16 +1,17 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { MailCheck } from 'lucide-react';
 import { z } from 'zod';
 import { authErrorMessage, registerSchema, useAuthActions } from '@/lib/auth';
 import { Field, FormError, SubmitButton } from './form-parts';
+import { ResendLink } from './resend-link';
 
 type Errors = Partial<Record<'name' | 'email' | 'password', string>>;
 
 export function RegisterForm() {
-  const router = useRouter();
   const { register } = useAuthActions();
+  const [sentTo, setSentTo] = useState('');
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -33,12 +34,26 @@ export function RegisterForm() {
 
     setSubmitting(true);
     try {
-      await register(parsed.data);
-      router.push('/dashboard');
+      const { email } = await register(parsed.data);
+      setSentTo(email);
     } catch (error) {
       setFormError(authErrorMessage(error));
       setSubmitting(false);
     }
+  }
+
+  if (sentTo) {
+    return (
+      <div className="mt-6 space-y-4 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-5" role="status">
+        <MailCheck className="h-7 w-7 text-emerald-300" />
+        <h2 className="text-lg font-semibold text-white">Check your email</h2>
+        <p className="text-sm text-slate-200">
+          We sent an activation link to <strong className="text-white">{sentTo}</strong>. Open it to activate your
+          account, then you can sign in. The link expires in 24 hours.
+        </p>
+        <ResendLink email={sentTo} />
+      </div>
+    );
   }
 
   return (

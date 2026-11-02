@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import { ArrowRight, BadgeCheck, BookOpenText, Library, Sparkles, TrendingUp } from 'lucide-react';
+import { ArrowRight, BookOpenText, Library, Sparkles, TrendingUp } from 'lucide-react';
 import { SiteShell } from '@/components/site-shell';
-import { books, dashboardMetrics } from '@/lib/mock-data';
+import { FeaturedBook, NewestBooks } from '@/components/catalog/newest-books';
 
 export default function HomePage() {
   return (
@@ -37,44 +37,9 @@ export default function HomePage() {
               Join today
             </Link>
           </div>
-
-          <div className="mt-10 grid gap-4 sm:grid-cols-3">
-            {dashboardMetrics.slice(0, 3).map((metric) => (
-              <div key={metric.label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="text-2xl font-semibold text-white">{metric.value}</div>
-                <div className="mt-1 text-sm text-slate-300">{metric.label}</div>
-              </div>
-            ))}
-          </div>
         </div>
 
-        <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
-          <div className="flex items-center justify-between text-sm text-slate-300">
-            <span className="inline-flex items-center gap-2">
-              <Library className="h-4 w-4 text-amber-300" />
-              Featured today
-            </span>
-            <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-xs text-emerald-300">Live stock</span>
-          </div>
-
-          <img
-            src={books[0].cover}
-            alt={books[0].title}
-            className="mt-6 h-72 w-full rounded-2xl object-cover"
-          />
-          <div className="mt-5">
-            <h2 className="text-2xl font-semibold text-white">{books[0].title}</h2>
-            <p className="mt-2 text-slate-300">{books[0].author}</p>
-            <div className="mt-4 flex items-center justify-between text-sm">
-              <span className="text-amber-300">Rental ₦{books[0].rentalPrice.toLocaleString()}</span>
-              <span className="text-slate-300">{books[0].stock} copies</span>
-            </div>
-            <div className="mt-5 flex items-center gap-2 text-sm text-emerald-300">
-              <BadgeCheck className="h-4 w-4" />
-              Ready for checkout in 2 minutes
-            </div>
-          </div>
-        </div>
+        <FeaturedBook />
       </section>
 
       <section className="mt-12 grid gap-6 md:grid-cols-3">
@@ -93,33 +58,7 @@ export default function HomePage() {
         ))}
       </section>
 
-      <section className="mt-12">
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-3xl font-semibold text-white">Popular books</h2>
-          <Link href="/books" className="text-sm text-amber-300 hover:text-amber-200">
-            View all &rarr;
-          </Link>
-        </div>
-        <div className="grid gap-6 md:grid-cols-4">
-          {books.map((book) => (
-            <Link key={book.id} href={`/books/${book.id}`} className="overflow-hidden rounded-3xl border border-white/10 bg-slate-900 transition hover:-translate-y-1 hover:border-amber-400/40">
-              <img src={book.cover} alt={book.title} className="h-64 w-full object-cover" />
-              <div className="p-4">
-                <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-wide text-slate-400">
-                  <span>{book.category}</span>
-                  <span>{book.status}</span>
-                </div>
-                <h3 className="text-lg font-semibold text-white">{book.title}</h3>
-                <p className="mt-1 text-sm text-slate-300">{book.author}</p>
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="text-amber-300">₦{book.price.toLocaleString()}</span>
-                  <span className="text-sm text-slate-400">{book.rating} ★</span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+      <NewestBooks />
     </SiteShell>
   );
 }

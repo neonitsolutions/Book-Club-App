@@ -26,7 +26,14 @@ function apiUrl(path: string): string {
 }
 
 // Endpoints that must not trigger a token refresh when they return 401
-const NO_REFRESH = ["/auth/login", "/auth/register", "/auth/refresh", "/auth/logout"];
+const NO_REFRESH = [
+  "/auth/login",
+  "/auth/register",
+  "/auth/refresh",
+  "/auth/logout",
+  "/auth/verify-email",
+  "/auth/resend-verification",
+];
 
 // One refresh at a time: parallel 401s share it instead of each rotating the token
 let refreshing: Promise<boolean> | null = null;

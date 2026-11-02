@@ -1,8 +1,10 @@
+import { RequireAdmin } from '@/components/auth/require-auth';
 import { SiteShell } from '@/components/site-shell';
 
 export default function ScannerPage() {
   return (
     <SiteShell>
+      <RequireAdmin>
       <div className="mx-auto max-w-4xl rounded-3xl border border-white/10 bg-slate-900 p-8">
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -33,6 +35,7 @@ export default function ScannerPage() {
           </div>
         </div>
       </div>
+          </RequireAdmin>
     </SiteShell>
   );
 }
