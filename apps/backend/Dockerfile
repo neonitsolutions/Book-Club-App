@@ -7,6 +7,11 @@ COPY . .
 RUN npm run build && npm prune --omit=dev
 FROM node:20-alpine AS runtime
 ENV NODE_ENV=production
+# The app runs with plain `node`; npm, yarn and corepack are only build tools.
+# Removing them keeps their bundled dependencies (and CVEs) out of production.
+# apk upgrade pulls Alpine security fixes released after the base image was built.
+RUN apk upgrade --no-cache && rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx \
+      /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-*
 WORKDIR /app
 COPY --from=build --chown=node:node /app/package.json ./
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
