@@ -19,8 +19,17 @@ import {
   clearAuthCookies,
   setAuthCookies,
 } from './auth.cookies';
-import { AuthResult, AuthService, ClientInfo } from './auth.service';
+import {
+  AuthResult,
+  AuthService,
+  ClientInfo,
+  RegisterResult,
+} from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
+import {
+  ResendVerificationDto,
+  VerifyEmailDto,
+} from './dto/email-verification.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -45,12 +54,30 @@ export class AuthController {
 
   @Post('register')
   @Throttle(STRICT)
-  async register(
-    @Body() dto: RegisterDto,
+  register(@Body() dto: RegisterDto): Promise<RegisterResult> {
+    return this.auth.register(dto);
+  }
+
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  @Throttle(STRICT)
+  async verifyEmail(
+    @Body() dto: VerifyEmailDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ user: PublicUser }> {
-    return this.respond(res, await this.auth.register(dto, clientInfo(req)));
+    return this.respond(
+      res,
+      await this.auth.verifyEmail(dto.token, clientInfo(req)),
+    );
+  }
+
+  // Always 204, whether or not the email has an account
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  async resendVerification(@Body() dto: ResendVerificationDto): Promise<void> {
+    await this.auth.resendVerification(dto.email);
   }
 
   @Post('login')

@@ -5,7 +5,9 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Model } from 'mongoose';
 import * as request from 'supertest';
 import { configureApp } from './../src/app.setup';
+import { EmailVerification } from './../src/auth/email-verification.schema';
 import { Session } from './../src/auth/session.schema';
+import { MailMessage, MailService } from './../src/mail/mail.service';
 import { User } from './../src/users/user.schema';
 import { REDIS_CLIENT } from './../src/redis/redis.module';
 
@@ -30,10 +32,19 @@ function setCookieLine(res: request.Response, name: string): string {
   return header.find((line) => line.startsWith(`${name}=`)) ?? '';
 }
 
+/** The token from the activation link in an email. */
+function tokenFrom(message: MailMessage): string {
+  const match = /verify-email\?token=([\w-]+)/.exec(message.text);
+  if (!match) throw new Error('No activation link in email');
+  return match[1];
+}
+
 describe('Auth (e2e)', () => {
   let app: NestExpressApplication;
   let mongo: MongoMemoryServer;
   let sessions: Model<Session>;
+  let verifications: Model<EmailVerification>;
+  const outbox: MailMessage[] = [];
 
   const jane = {
     name: 'Jane Doe',
@@ -56,16 +67,25 @@ describe('Auth (e2e)', () => {
     })
       .overrideProvider(REDIS_CLIENT)
       .useValue({ ping: jest.fn(), quit: jest.fn() })
+      .overrideProvider(MailService)
+      .useValue({
+        send: (message: MailMessage) => {
+          outbox.push(message);
+          return Promise.resolve();
+        },
+      })
       .compile();
 
     app = moduleFixture.createNestApplication<NestExpressApplication>();
     configureApp(app);
     await app.init();
     sessions = moduleFixture.get(getModelToken(Session.name));
+    verifications = moduleFixture.get(getModelToken(EmailVerification.name));
     // Unique email index must exist before the duplicate sign-up test
     await moduleFixture
       .get<Model<User>>(getModelToken(User.name))
       .syncIndexes();
+    await verifications.syncIndexes();
   }, 120_000);
 
   afterAll(async () => {
@@ -76,27 +96,23 @@ describe('Auth (e2e)', () => {
   const http = () => request(app.getHttpServer());
 
   describe('register', () => {
-    it('creates a member, signs them in and never returns the password', async () => {
+    it('creates an inactive account and emails an activation link, without signing in', async () => {
       const res = await http()
         .post('/api/auth/register')
         .send(jane)
         .expect(201);
-      const body = res.body as UserBody;
 
-      expect(body.user).toMatchObject({
-        name: 'Jane Doe',
+      expect(res.body).toEqual({
         email: 'jane@example.com',
-        role: 'MEMBER',
+        verificationRequired: true,
       });
-      expect(JSON.stringify(res.body)).not.toMatch(/password/i);
+      expect(res.headers['set-cookie']).toBeUndefined();
 
-      const access = setCookieLine(res, 'access_token');
-      const refresh = setCookieLine(res, 'refresh_token');
-      expect(access).toMatch(/HttpOnly/);
-      expect(access).toMatch(/SameSite=Lax/);
-      expect(access).toMatch(/Path=\/api/);
-      expect(refresh).toMatch(/HttpOnly/);
-      expect(refresh).toMatch(/Path=\/api\/auth/);
+      expect(outbox).toHaveLength(1);
+      expect(outbox[0].to).toBe('jane@example.com');
+      expect(outbox[0].text).toMatch(
+        /^http:\/\/localhost:3000\/verify-email\?token=/m,
+      );
     });
 
     it('rejects a second account with the same email, in any letter case', async () => {
@@ -115,6 +131,99 @@ describe('Auth (e2e)', () => {
         .post('/api/auth/register')
         .send({ ...jane, email: 'other@example.com', role: 'ADMIN' })
         .expect(400); // nobody can make themselves an admin
+    });
+  });
+
+  describe('email verification', () => {
+    it('refuses to sign in before the account is activated', async () => {
+      // Own client IP, so these attempts do not count towards later tests' limit
+      const res = await http()
+        .post('/api/auth/login')
+        .set('X-Forwarded-For', '203.0.113.20')
+        .send({ email: 'jane@example.com', password: jane.password })
+        .expect(403);
+      expect(res.body).toMatchObject({ code: 'EMAIL_NOT_VERIFIED' });
+      expect(res.headers['set-cookie']).toBeUndefined();
+
+      // A wrong password still gets the usual answer: no hint the account exists
+      await http()
+        .post('/api/auth/login')
+        .set('X-Forwarded-For', '203.0.113.20')
+        .send({ email: 'jane@example.com', password: 'wrong password' })
+        .expect(401);
+    });
+
+    it('rejects a forged or expired link', async () => {
+      await http()
+        .post('/api/auth/verify-email')
+        .send({ token: 'x'.repeat(43) })
+        .expect(400);
+
+      await verifications.updateMany(
+        {},
+        { expiresAt: new Date(Date.now() - 1000) },
+      );
+      await http()
+        .post('/api/auth/verify-email')
+        .send({ token: tokenFrom(outbox[0]) })
+        .expect(400);
+    });
+
+    it('sends a new link on request, but not more than once a minute', async () => {
+      outbox.length = 0;
+      await verifications.deleteMany({});
+
+      await http()
+        .post('/api/auth/resend-verification')
+        .send({ email: 'Jane@Example.com' })
+        .expect(204);
+      await http()
+        .post('/api/auth/resend-verification')
+        .send({ email: 'jane@example.com' })
+        .expect(204);
+      expect(outbox).toHaveLength(1);
+
+      // Unknown addresses get the same answer and no email
+      await http()
+        .post('/api/auth/resend-verification')
+        .send({ email: 'nobody@example.com' })
+        .expect(204);
+      expect(outbox).toHaveLength(1);
+    });
+
+    it('activates the account and signs in with the link, which then stops working', async () => {
+      const token = tokenFrom(outbox[0]);
+      const res = await http()
+        .post('/api/auth/verify-email')
+        .send({ token })
+        .expect(200);
+
+      expect((res.body as UserBody).user).toMatchObject({
+        name: 'Jane Doe',
+        email: 'jane@example.com',
+        role: 'MEMBER',
+        emailVerified: true,
+      });
+      expect(JSON.stringify(res.body)).not.toMatch(/password/i);
+
+      const access = setCookieLine(res, 'access_token');
+      const refresh = setCookieLine(res, 'refresh_token');
+      expect(access).toMatch(/HttpOnly/);
+      expect(access).toMatch(/SameSite=Lax/);
+      expect(access).toMatch(/Path=\/api/);
+      expect(refresh).toMatch(/HttpOnly/);
+      expect(refresh).toMatch(/Path=\/api\/auth/);
+
+      await http().post('/api/auth/verify-email').send({ token }).expect(400);
+    });
+
+    it('sends no more links once the account is active', async () => {
+      outbox.length = 0;
+      await http()
+        .post('/api/auth/resend-verification')
+        .send({ email: 'jane@example.com' })
+        .expect(204);
+      expect(outbox).toHaveLength(0);
     });
   });
 

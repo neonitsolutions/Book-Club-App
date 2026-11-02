@@ -112,6 +112,11 @@ variable "redis_secret_arn" {
   type = string
 }
 
+variable "mail_from" {
+  description = "Sender of account emails, e.g. \"Readers Club <no-reply@example.com>\". The domain must be verified in SES."
+  type        = string
+}
+
 variable "backend_extra_environment" {
   description = "Extra plain (non-secret) environment variables for the backend."
   type        = map(string)

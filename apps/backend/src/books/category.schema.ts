@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class Category {
@@ -13,7 +13,7 @@ export class Category {
   description?: string;
 
   // Optional nesting: Fiction > Thriller
-  @Prop({ type: Types.ObjectId, ref: 'Category', index: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Category', index: true })
   parentId?: Types.ObjectId;
 
   @Prop({ default: 0 })

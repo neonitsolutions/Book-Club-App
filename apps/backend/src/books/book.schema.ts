@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 import { kobo } from '../common/money';
 import { MediaAsset, MediaAssetSchema } from './media-asset.schema';
 
@@ -40,7 +40,10 @@ export class Book {
   @Prop({ required: true, unique: true, lowercase: true, trim: true })
   slug: string;
 
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'Author' }], default: [] })
+  @Prop({
+    type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Author' }],
+    default: [],
+  })
   authorIds: Types.ObjectId[];
 
   // Copy of the authors' names, so search and listings need no join.
@@ -56,7 +59,10 @@ export class Book {
   @Prop({ trim: true, maxlength: 10000 })
   description?: string;
 
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'Category' }], default: [] })
+  @Prop({
+    type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Category' }],
+    default: [],
+  })
   categoryIds: Types.ObjectId[];
 
   @Prop({ trim: true, maxlength: 200 })

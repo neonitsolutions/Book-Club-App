@@ -1,5 +1,9 @@
 import { Schema } from 'mongoose';
 import { AuditLog, AuditLogSchema } from '../audit/audit-log.schema';
+import {
+  EmailVerification,
+  EmailVerificationSchema,
+} from '../auth/email-verification.schema';
 import { Session, SessionSchema } from '../auth/session.schema';
 import { Author, AuthorSchema } from '../books/author.schema';
 import { Book, BookSchema } from '../books/book.schema';
@@ -36,6 +40,7 @@ import { Counter, CounterSchema } from './counter.schema';
 export const ALL_MODELS: { name: string; schema: Schema }[] = [
   { name: User.name, schema: UserSchema },
   { name: Session.name, schema: SessionSchema },
+  { name: EmailVerification.name, schema: EmailVerificationSchema },
   { name: Counter.name, schema: CounterSchema },
   { name: Category.name, schema: CategorySchema },
   { name: Author.name, schema: AuthorSchema },

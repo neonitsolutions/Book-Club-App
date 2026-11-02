@@ -9,6 +9,10 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
+import {
+  EmailVerification,
+  EmailVerificationSchema,
+} from './email-verification.schema';
 import { Session, SessionSchema } from './session.schema';
 
 // Global so other modules can use JwtAuthGuard and RolesGuard without imports
@@ -16,7 +20,10 @@ import { Session, SessionSchema } from './session.schema';
 @Module({
   imports: [
     UsersModule,
-    MongooseModule.forFeature([{ name: Session.name, schema: SessionSchema }]),
+    MongooseModule.forFeature([
+      { name: Session.name, schema: SessionSchema },
+      { name: EmailVerification.name, schema: EmailVerificationSchema },
+    ]),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) => ({

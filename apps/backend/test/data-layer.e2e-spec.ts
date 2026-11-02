@@ -98,6 +98,28 @@ describe('Data layer (e2e)', () => {
     expiresAt: new Date(Date.now() + DAY),
   });
 
+  it('stores every reference as a real ObjectId, not as "Mixed"', () => {
+    // `type: Types.ObjectId` silently makes a field Mixed: queries with a
+    // string id then match nothing. Schemas must use Schema.Types.ObjectId.
+    const mixedRefs: string[] = [];
+    for (const { name, schema } of ALL_MODELS) {
+      schema.eachPath((path, type) => {
+        const options = type.options as { ref?: unknown; type?: unknown };
+        const caster = (type as unknown as { caster?: { instance: string } })
+          .caster;
+        const instance = caster?.instance ?? type.instance;
+        // Gateway ids like providerTransactionId are strings on purpose
+        const wrong =
+          (!!options.ref && instance !== 'ObjectId') ||
+          (/Ids?$/.test(path) && instance === 'Mixed');
+        if (wrong) {
+          mixedRefs.push(`${name}.${path} is ${instance}`);
+        }
+      });
+    }
+    expect(mixedRefs).toEqual([]);
+  });
+
   it('registers every model in ALL_MODELS, which the scripts rely on', () => {
     const registered = Object.keys(connection.models).sort();
     expect(registered).toEqual(ALL_MODELS.map((m) => m.name).sort());

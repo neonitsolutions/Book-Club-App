@@ -36,9 +36,12 @@ locals {
         NODE_ENV     = "production"
         PORT         = "3001"
         CORS_ORIGIN  = var.app_url
+        APP_URL      = var.app_url
+        AWS_REGION   = var.region
         LOG_LEVEL    = var.log_level
         MEDIA_BUCKET = var.media_bucket_name
         CDN_URL      = var.cdn_url
+        MAIL_FROM    = var.mail_from
       }, var.backend_extra_environment)
       secrets = concat(
         [for key in var.backend_secret_keys : { name = key, valueFrom = "${var.backend_secret_arn}:${key}::" }],

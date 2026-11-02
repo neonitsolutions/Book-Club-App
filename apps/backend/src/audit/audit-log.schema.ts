@@ -10,7 +10,7 @@ import { Role } from '../users/role.enum';
 @Schema({ timestamps: { createdAt: true, updatedAt: false } })
 export class AuditLog {
   // Unset for system actions (scheduled jobs, payment webhooks)
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' })
   actorId?: Types.ObjectId;
 
   @Prop({ type: String, enum: Role })
@@ -24,7 +24,7 @@ export class AuditLog {
   @Prop({ required: true })
   entityType: string;
 
-  @Prop({ type: Types.ObjectId })
+  @Prop({ type: MongooseSchema.Types.ObjectId })
   entityId?: Types.ObjectId;
 
   // Only the fields that changed, as { field: { from, to } }. Never

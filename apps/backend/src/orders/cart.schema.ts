@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 export enum CartKind {
   // Books the member wants to borrow
@@ -10,7 +10,7 @@ export enum CartKind {
 
 @Schema({ _id: false })
 export class CartItem {
-  @Prop({ type: Types.ObjectId, ref: 'Book', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Book', required: true })
   bookId: Types.ObjectId;
 
   // Always 1 in a rental cart
@@ -29,7 +29,7 @@ const CartItemSchema = SchemaFactory.createForClass(CartItem);
  */
 @Schema({ timestamps: true })
 export class Cart {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   userId: Types.ObjectId;
 
   @Prop({ type: String, enum: CartKind, required: true })
