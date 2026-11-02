@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 import { kobo } from '../common/money';
 import { CopyCondition } from '../inventory/book-copy.schema';
 
@@ -57,10 +57,10 @@ export class LateFee {
   @Prop({ ...kobo, default: 0 })
   amountKobo: number;
 
-  @Prop({ type: Types.ObjectId, ref: 'Payment' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Payment' })
   paymentId?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' })
   waivedBy?: Types.ObjectId;
 }
 
@@ -69,16 +69,24 @@ const LateFeeSchema = SchemaFactory.createForClass(LateFee);
 /** One physical copy lent to one member. */
 @Schema({ timestamps: true })
 export class Rental {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   userId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Membership', required: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: 'Membership',
+    required: true,
+  })
   membershipId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Book', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Book', required: true })
   bookId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'BookCopy', required: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: 'BookCopy',
+    required: true,
+  })
   copyId: Types.ObjectId;
 
   // Copied from the book and copy so history reads well after edits
@@ -100,7 +108,7 @@ export class Rental {
   @Prop()
   checkedOutAt?: Date;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' })
   checkedOutBy?: Types.ObjectId;
 
   // Set at checkout: checkedOutAt + terms.rentalPeriodDays
@@ -121,7 +129,7 @@ export class Rental {
   @Prop()
   returnedAt?: Date;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' })
   returnedTo?: Types.ObjectId;
 
   @Prop({ type: String, enum: CopyCondition })

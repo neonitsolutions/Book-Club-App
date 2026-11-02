@@ -31,14 +31,14 @@ export enum PaymentStatus {
  */
 @Schema({ timestamps: true })
 export class Payment {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   userId: Types.ObjectId;
 
   @Prop({ type: String, enum: PaymentPurpose, required: true })
   purpose: PaymentPurpose;
 
   // The Membership, Order or Rental being paid for
-  @Prop({ type: Types.ObjectId, required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, required: true })
   refId: Types.ObjectId;
 
   @Prop({ ...kobo, required: true })
@@ -82,7 +82,7 @@ export class Payment {
   providerData?: Record<string, unknown>;
 
   // Staff member who recorded a MANUAL payment
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' })
   recordedBy?: Types.ObjectId;
 
   createdAt: Date;

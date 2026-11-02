@@ -28,4 +28,19 @@ describe('validateEnv', () => {
       validateEnv({ ...valid, JWT_ACCESS_SECRET: 'too-short' }),
     ).toThrow(/JWT_ACCESS_SECRET/);
   });
+
+  it('requires email and media settings in production', () => {
+    expect(() => validateEnv({ ...valid, NODE_ENV: 'production' })).toThrow(
+      /MAIL_FROM: is required in production[\s\S]*MEDIA_BUCKET[\s\S]*CDN_URL/,
+    );
+    expect(
+      validateEnv({
+        ...valid,
+        NODE_ENV: 'production',
+        MAIL_FROM: 'Readers Club <no-reply@example.com>',
+        MEDIA_BUCKET: 'media-bucket',
+        CDN_URL: 'https://cdn.example.com',
+      }).NODE_ENV,
+    ).toBe('production');
+  });
 });

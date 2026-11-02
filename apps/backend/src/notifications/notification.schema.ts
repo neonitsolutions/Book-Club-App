@@ -41,7 +41,7 @@ const RETENTION_DAYS = 180;
 
 @Schema({ timestamps: true })
 export class Notification {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   userId: Types.ObjectId;
 
   // e.g. "rental.due_soon", "membership.expiring", "order.ready_for_pickup"

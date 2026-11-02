@@ -41,7 +41,11 @@ Thumbs.db
 *.tfstate.*
 *.tfplan
 tfplan
+tfplan.*
 crash.log
 *.tfvars
 !*.tfvars.example
 infrastructure/terraform/envs/backend.hcl
+
+# Book pictures stored locally when MEDIA_BUCKET is not set
+apps/backend/uploads/

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { BookOpenText, ShoppingCart, Sparkles } from 'lucide-react';
 import { AccountMenu } from '@/components/auth/account-menu';
+import { AdminLink, NavLinks } from '@/components/nav-links';
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
   return (
@@ -14,14 +15,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
             Readers Club
           </Link>
 
-          <nav className="hidden items-center gap-6 text-sm text-slate-300 md:flex">
-            <Link href="/books" className="transition hover:text-white">Books</Link>
-            <Link href="/books/rent" className="transition hover:text-white">Rent</Link>
-            <Link href="/books/sale" className="transition hover:text-white">Sale</Link>
-            <Link href="/subscription" className="transition hover:text-white">Membership</Link>
-            <Link href="/dashboard" className="transition hover:text-white">Dashboard</Link>
-            <Link href="/admin" className="transition hover:text-white">Admin</Link>
-          </nav>
+          <NavLinks />
 
           <div className="flex items-center gap-3">
             <Link
@@ -47,7 +41,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
           <div className="flex gap-6">
             <Link href="/about" className="hover:text-white">About</Link>
             <Link href="/contact" className="hover:text-white">Contact</Link>
-            <Link href="/admin" className="hover:text-white">Admin</Link>
+            <AdminLink className="hover:text-white" />
           </div>
         </div>
       </footer>

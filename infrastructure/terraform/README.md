@@ -109,6 +109,29 @@ terraform output app_url
 
 Click the confirmation link AWS emails to `alarm_email`, or alarms will not arrive.
 
+### 4. Email (sign-up verification)
+
+`envs/shared/email.tf` adds the domain to AWS SES with DKIM and DMARC records. After
+`terraform apply` in `envs/shared`, SES verifies the domain within about an hour:
+
+```bash
+aws sesv2 get-email-identity --email-identity example.com --query VerifiedForSendingStatus
+```
+
+New SES accounts are in the **sandbox**: they only send to addresses verified in SES, so
+members would never get their activation email. Request production access once (SES console
+→ Account dashboard → Request production access, or the command below); AWS answers within
+about a day.
+
+```bash
+aws sesv2 put-account-details --production-access-enabled --mail-type TRANSACTIONAL \
+  --website-url https://example.com \
+  --use-case-description "Account activation emails for members who sign up on our book club site. One email per sign-up, sent only when requested."
+```
+
+Until then, to test with your own inbox: `aws sesv2 create-email-identity --email-identity you@example.com`
+and click the link AWS sends.
+
 ## Day-to-day
 
 - **Code changes** never need Terraform: Jenkins builds images and runs

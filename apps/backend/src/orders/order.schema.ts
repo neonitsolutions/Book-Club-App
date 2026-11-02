@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 import { kobo } from '../common/money';
 
 export enum OrderStatus {
@@ -22,10 +22,14 @@ export enum FulfilmentMethod {
 /** One line per physical copy, so each copy is scanned and tracked. */
 @Schema({ _id: false })
 export class OrderItem {
-  @Prop({ type: Types.ObjectId, ref: 'Book', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Book', required: true })
   bookId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'BookCopy', required: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: 'BookCopy',
+    required: true,
+  })
   copyId: Types.ObjectId;
 
   // Title and price at the time of the order; later edits do not change it
@@ -80,7 +84,7 @@ export class OrderStatusChange {
   at: Date;
 
   // Unset when the system made the change (payment webhook, expiry job)
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' })
   by?: Types.ObjectId;
 
   @Prop()
@@ -95,7 +99,7 @@ export class Order {
   @Prop({ required: true, unique: true })
   orderNumber: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   userId: Types.ObjectId;
 
   @Prop({
@@ -136,7 +140,7 @@ export class Order {
   @Prop({ required: true })
   reservationExpiresAt: Date;
 
-  @Prop({ type: Types.ObjectId, ref: 'Payment' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Payment' })
   paymentId?: Types.ObjectId;
 
   @Prop()

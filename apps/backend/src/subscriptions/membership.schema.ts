@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 import { kobo } from '../common/money';
 
 export enum MembershipStatus {
@@ -56,7 +56,7 @@ export class MembershipPeriod {
   @Prop({ required: true })
   endsAt: Date;
 
-  @Prop({ type: Types.ObjectId, ref: 'Payment', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Payment', required: true })
   paymentId: Types.ObjectId;
 }
 
@@ -68,10 +68,14 @@ const MembershipPeriodSchema = SchemaFactory.createForClass(MembershipPeriod);
  */
 @Schema({ timestamps: true })
 export class Membership {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   userId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'SubscriptionPlan', required: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: 'SubscriptionPlan',
+    required: true,
+  })
   planId: Types.ObjectId;
 
   @Prop({ type: PlanTermsSchema, required: true })

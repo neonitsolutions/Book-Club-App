@@ -1,10 +1,24 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import * as argon2 from '@node-rs/argon2';
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { Model, isValidObjectId } from 'mongoose';
-import { PublicUser, UserDocument, toPublicUser } from '../users/user.schema';
+import { Env } from '../config/env.validation';
+import { MailService } from '../mail/mail.service';
+import {
+  PublicUser,
+  UserDocument,
+  isEmailVerified,
+  toPublicUser,
+} from '../users/user.schema';
 import { UsersService } from '../users/users.service';
 import {
   ACCESS_TOKEN_TTL_SECONDS,
@@ -12,8 +26,10 @@ import {
 } from './auth.cookies';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { EmailVerification } from './email-verification.schema';
 import { Session } from './session.schema';
 import { AccessTokenPayload } from './jwt-payload';
+import { verificationEmail } from './verification-email';
 
 export interface AuthResult {
   user: PublicUser;
@@ -26,10 +42,19 @@ export interface ClientInfo {
   ip?: string;
 }
 
+export interface RegisterResult {
+  email: string;
+  verificationRequired: true;
+}
+
 const INVALID_CREDENTIALS = 'Invalid email or password';
 const INVALID_SESSION = 'Session expired, please sign in again';
 
 const ROTATION_GRACE_MS = 30_000;
+
+const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
+// A new link at most this often per account, however often "resend" is hit
+const RESEND_COOLDOWN_MS = 60_000;
 
 function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');
@@ -43,6 +68,8 @@ function hashesEqual(a: string, b: string): boolean {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+  private readonly appUrl: string;
   // Verified against when the email does not exist, so a wrong email takes as
   // long as a wrong password and response times do not reveal who has an account
   private readonly dummyHash = argon2.hash(randomBytes(16).toString('hex'));
@@ -51,16 +78,91 @@ export class AuthService {
     private readonly users: UsersService,
     private readonly jwt: JwtService,
     @InjectModel(Session.name) private readonly sessions: Model<Session>,
-  ) {}
+    @InjectModel(EmailVerification.name)
+    private readonly verifications: Model<EmailVerification>,
+    private readonly mail: MailService,
+    config: ConfigService<Env, true>,
+  ) {
+    this.appUrl = config.get('APP_URL', { infer: true }).replace(/\/+$/, '');
+  }
 
-  async register(dto: RegisterDto, client: ClientInfo): Promise<AuthResult> {
+  /**
+   * Creates the account and emails an activation link. No session yet: the
+   * member signs in by clicking the link.
+   */
+  async register(dto: RegisterDto): Promise<RegisterResult> {
     const passwordHash = await argon2.hash(dto.password);
     const user = await this.users.create({
       name: dto.name,
       email: dto.email,
       passwordHash,
     });
+    await this.sendVerification(user);
+    return { email: user.email, verificationRequired: true };
+  }
+
+  /** Activates the account behind a link and signs the member in. */
+  async verifyEmail(token: string, client: ClientInfo): Promise<AuthResult> {
+    // Deleting while reading makes the link single-use, even if clicked twice
+    const verification = await this.verifications
+      .findOneAndDelete({
+        tokenHash: sha256(token),
+        expiresAt: { $gt: new Date() },
+      })
+      .exec();
+    if (!verification) {
+      throw new BadRequestException(
+        'This activation link is invalid or has expired. Request a new one.',
+      );
+    }
+
+    const user =
+      (await this.users.markEmailVerified(verification.userId)) ??
+      (await this.users.findById(verification.userId.toString()));
+    if (!user) {
+      throw new BadRequestException('This account no longer exists.');
+    }
+    await this.verifications.deleteMany({ userId: user._id }).exec();
     return this.startSession(user, client);
+  }
+
+  /**
+   * Sends a fresh link to an account that is not yet active. Says nothing
+   * about whether the email is registered, so it cannot be used to find
+   * out who has an account.
+   */
+  async resendVerification(email: string): Promise<void> {
+    const user = await this.users.findByEmail(email);
+    if (!user || isEmailVerified(user)) return;
+
+    const recent = await this.verifications
+      .exists({
+        userId: user._id,
+        createdAt: { $gt: new Date(Date.now() - RESEND_COOLDOWN_MS) },
+      })
+      .exec();
+    if (recent) return;
+
+    await this.verifications.deleteMany({ userId: user._id }).exec();
+    await this.sendVerification(user);
+  }
+
+  private async sendVerification(user: UserDocument): Promise<void> {
+    const token = randomBytes(32).toString('base64url');
+    await this.verifications.create({
+      userId: user._id,
+      tokenHash: sha256(token),
+      expiresAt: new Date(Date.now() + VERIFICATION_TTL_MS),
+    });
+    const link = `${this.appUrl}/verify-email?token=${token}`;
+    try {
+      await this.mail.send(verificationEmail(user.email, user.name, link));
+    } catch (error) {
+      // The account exists either way; the member can ask for a new link
+      this.logger.error(
+        `Could not send verification email to user ${user.id as string}: ${(error as Error).message}`,
+      );
+    }
   }
 
   async login(dto: LoginDto, client: ClientInfo): Promise<AuthResult> {
@@ -71,6 +173,15 @@ export class AuthService {
     }
     if (!(await argon2.verify(user.passwordHash, dto.password))) {
       throw new UnauthorizedException(INVALID_CREDENTIALS);
+    }
+    // Checked after the password, so this does not reveal who has signed up
+    if (!isEmailVerified(user)) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        error: 'Forbidden',
+        code: 'EMAIL_NOT_VERIFIED',
+        message: 'Please activate your account with the link we emailed you.',
+      });
     }
     return this.startSession(user, client);
   }

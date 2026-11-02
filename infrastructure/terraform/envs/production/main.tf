@@ -127,6 +127,7 @@ module "ecs" {
   media_bucket_name   = module.media.bucket_name
   media_bucket_arn    = module.media.bucket_arn
   cdn_url             = module.media.cdn_url
+  mail_from           = "Readers Club <no-reply@${var.hosted_zone_name}>"
   backend_secret_arn  = module.secrets.backend_secret_arn
   backend_secret_keys = var.backend_secret_keys
   redis_secret_arn    = module.secrets.redis_secret_arn

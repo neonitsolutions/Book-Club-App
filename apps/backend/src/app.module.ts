@@ -7,10 +7,13 @@ import { AppService } from './app.service';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { BooksModule } from './books/books.module';
+import { CatalogModule } from './books/catalog.module';
 import { Env, validateEnv } from './config/env.validation';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { InventoryModule } from './inventory/inventory.module';
+import { MailModule } from './mail/mail.module';
+import { MediaModule } from './media/media.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
@@ -52,6 +55,7 @@ import { UsersModule } from './users/users.module';
       }),
     }),
     DatabaseModule,
+    MailModule,
     RedisModule,
     HealthModule,
     UsersModule,
@@ -65,6 +69,8 @@ import { UsersModule } from './users/users.module';
     ScansModule,
     NotificationsModule,
     AuditModule,
+    MediaModule,
+    CatalogModule,
   ],
   controllers: [AppController],
   providers: [AppService],

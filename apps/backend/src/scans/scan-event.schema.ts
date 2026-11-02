@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 import { Role } from '../users/role.enum';
 import { CopyCondition, CopyStatus } from '../inventory/book-copy.schema';
 
@@ -49,23 +49,23 @@ export class ScanEvent {
   rejectionReason?: string;
 
   // Unset when the code matched no copy
-  @Prop({ type: Types.ObjectId, ref: 'BookCopy' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'BookCopy' })
   copyId?: Types.ObjectId;
 
   // What was scanned or typed, kept even when it matched nothing
   @Prop({ required: true, maxlength: 200 })
   scannedValue: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   scannedBy: Types.ObjectId;
 
   @Prop({ type: String, enum: Role, required: true })
   scannedByRole: Role;
 
-  @Prop({ type: Types.ObjectId, ref: 'Rental' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Rental' })
   rentalId?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Order' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Order' })
   orderId?: Types.ObjectId;
 
   @Prop({ type: String, enum: CopyStatus })

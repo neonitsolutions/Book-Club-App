@@ -1,10 +1,12 @@
 import Link from 'next/link';
+import { RequireAdmin } from '@/components/auth/require-auth';
 import { SiteShell } from '@/components/site-shell';
 import { dashboardMetrics, inventoryItems } from '@/lib/mock-data';
 
 export default function AdminPage() {
   return (
     <SiteShell>
+      <RequireAdmin>
       <div className="mb-8 flex items-center justify-between">
         <div>
           <p className="text-sm uppercase tracking-[0.2em] text-amber-300">Overview</p>
@@ -47,6 +49,7 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
+          </RequireAdmin>
     </SiteShell>
   );
 }

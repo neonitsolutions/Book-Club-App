@@ -189,7 +189,16 @@ async function main() {
       }
       const existing = await users.findOne({ email }).exec();
       if (existing) {
-        await users.updateOne({ _id: existing._id }, { role: Role.ADMIN });
+        // The operator vouches for this address: activate it if pending
+        await users.updateOne(
+          { _id: existing._id },
+          {
+            role: Role.ADMIN,
+            ...(existing.emailVerifiedAt === null && {
+              emailVerifiedAt: new Date(),
+            }),
+          },
+        );
         logger.log(`Admin: ${email} already exists, role set to ADMIN`);
       } else {
         await users.create({
@@ -197,6 +206,7 @@ async function main() {
           email,
           passwordHash: await argon2.hash(password),
           role: Role.ADMIN,
+          emailVerifiedAt: new Date(),
         });
         logger.log(`Admin: created ${email}`);
       }

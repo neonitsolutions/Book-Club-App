@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 import { kobo } from '../common/money';
 
 /** Which stock a copy belongs to. A copy is never both rentable and for sale. */
@@ -40,10 +40,10 @@ export class CopyReservation {
   kind: ReservationKind;
 
   // The Rental or Order holding the copy
-  @Prop({ type: Types.ObjectId, required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, required: true })
   refId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   userId: Types.ObjectId;
 
   @Prop({ required: true })
@@ -59,7 +59,7 @@ const CopyReservationSchema = SchemaFactory.createForClass(CopyReservation);
 /** One physical book on a shelf, with its own QR label. */
 @Schema({ timestamps: true })
 export class BookCopy {
-  @Prop({ type: Types.ObjectId, ref: 'Book', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Book', required: true })
   bookId: Types.ObjectId;
 
   // Human-readable, printed under the QR code, typed in when a camera is not
@@ -94,11 +94,11 @@ export class BookCopy {
   reservation?: CopyReservation;
 
   // Set while RENTED
-  @Prop({ type: Types.ObjectId, ref: 'Rental' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Rental' })
   currentRentalId?: Types.ObjectId;
 
   // Set once SOLD
-  @Prop({ type: Types.ObjectId, ref: 'Order' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Order' })
   soldOrderId?: Types.ObjectId;
 
   @Prop()
