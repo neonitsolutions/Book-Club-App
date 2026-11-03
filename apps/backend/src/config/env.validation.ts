@@ -20,6 +20,13 @@ const envSchema = z.object({
     .min(32, 'must be at least 32 characters (openssl rand -base64 48)'),
   // Public address of the site, for links in emails
   APP_URL: z.url().default('http://localhost:3000'),
+  // When 'false', sign-up signs people in straight away and no activation
+  // email is sent (e.g. while SES is still in its sandbox). Turn it back on
+  // without code changes once email delivery works.
+  REQUIRE_EMAIL_VERIFICATION: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
   // Sender for account emails, e.g. "Readers Club <no-reply@example.com>".
   // Unset outside production: emails are written to the log instead.
   MAIL_FROM: z.string().min(3).optional(),
@@ -37,7 +44,11 @@ export function validateEnv(config: Record<string, unknown>): Env {
     .superRefine((env, ctx) => {
       if (env.NODE_ENV !== 'production') return;
       // Without these, sign-up emails or picture uploads would silently fail
-      for (const key of ['MAIL_FROM', 'MEDIA_BUCKET', 'CDN_URL'] as const) {
+      const required = ['MEDIA_BUCKET', 'CDN_URL'] as const;
+      const keys = env.REQUIRE_EMAIL_VERIFICATION
+        ? (['MAIL_FROM', ...required] as const)
+        : required;
+      for (const key of keys) {
         if (!env[key]) {
           ctx.addIssue({
             code: 'custom',

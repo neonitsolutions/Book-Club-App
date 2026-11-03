@@ -42,10 +42,10 @@ export interface ClientInfo {
   ip?: string;
 }
 
-export interface RegisterResult {
-  email: string;
-  verificationRequired: true;
-}
+/** Sign-up either waits for the emailed link, or signs in straight away. */
+export type RegisterResult =
+  | { verificationRequired: true; email: string }
+  | ({ verificationRequired: false } & AuthResult);
 
 const INVALID_CREDENTIALS = 'Invalid email or password';
 const INVALID_SESSION = 'Session expired, please sign in again';
@@ -70,6 +70,7 @@ function hashesEqual(a: string, b: string): boolean {
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private readonly appUrl: string;
+  private readonly requireVerification: boolean;
   // Verified against when the email does not exist, so a wrong email takes as
   // long as a wrong password and response times do not reveal who has an account
   private readonly dummyHash = argon2.hash(randomBytes(16).toString('hex'));
@@ -84,19 +85,33 @@ export class AuthService {
     config: ConfigService<Env, true>,
   ) {
     this.appUrl = config.get('APP_URL', { infer: true }).replace(/\/+$/, '');
+    this.requireVerification = config.get('REQUIRE_EMAIL_VERIFICATION', {
+      infer: true,
+    });
   }
 
   /**
-   * Creates the account and emails an activation link. No session yet: the
-   * member signs in by clicking the link.
+   * Creates the account. With verification on, emails an activation link and
+   * starts no session: the member signs in by clicking the link. With it off,
+   * the account is active at once and the member is signed in.
    */
-  async register(dto: RegisterDto): Promise<RegisterResult> {
+  async register(
+    dto: RegisterDto,
+    client: ClientInfo,
+  ): Promise<RegisterResult> {
     const passwordHash = await argon2.hash(dto.password);
     const user = await this.users.create({
       name: dto.name,
       email: dto.email,
       passwordHash,
+      emailVerified: !this.requireVerification,
     });
+    if (!this.requireVerification) {
+      return {
+        verificationRequired: false,
+        ...(await this.startSession(user, client)),
+      };
+    }
     await this.sendVerification(user);
     return { email: user.email, verificationRequired: true };
   }
@@ -132,6 +147,7 @@ export class AuthService {
    * out who has an account.
    */
   async resendVerification(email: string): Promise<void> {
+    if (!this.requireVerification) return;
     const user = await this.users.findByEmail(email);
     if (!user || isEmailVerified(user)) return;
 
@@ -175,7 +191,9 @@ export class AuthService {
       throw new UnauthorizedException(INVALID_CREDENTIALS);
     }
     // Checked after the password, so this does not reveal who has signed up
-    if (!isEmailVerified(user)) {
+    // Accounts left unactivated while verification was on can sign in once
+    // it is turned off: no email could reach them anyway
+    if (this.requireVerification && !isEmailVerified(user)) {
       throw new ForbiddenException({
         statusCode: 403,
         error: 'Forbidden',

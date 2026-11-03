@@ -19,12 +19,7 @@ import {
   clearAuthCookies,
   setAuthCookies,
 } from './auth.cookies';
-import {
-  AuthResult,
-  AuthService,
-  ClientInfo,
-  RegisterResult,
-} from './auth.service';
+import { AuthResult, AuthService, ClientInfo } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import {
   ResendVerificationDto,
@@ -54,8 +49,17 @@ export class AuthController {
 
   @Post('register')
   @Throttle(STRICT)
-  register(@Body() dto: RegisterDto): Promise<RegisterResult> {
-    return this.auth.register(dto);
+  async register(
+    @Body() dto: RegisterDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<
+    | { verificationRequired: true; email: string }
+    | { verificationRequired: false; user: PublicUser }
+  > {
+    const result = await this.auth.register(dto, clientInfo(req));
+    if (result.verificationRequired) return result;
+    return { verificationRequired: false, ...this.respond(res, result) };
   }
 
   @Post('verify-email')
