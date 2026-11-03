@@ -43,4 +43,29 @@ describe('validateEnv', () => {
       }).NODE_ENV,
     ).toBe('production');
   });
+
+  it('requires email verification by default', () => {
+    expect(validateEnv(valid).REQUIRE_EMAIL_VERIFICATION).toBe(true);
+    expect(
+      validateEnv({ ...valid, REQUIRE_EMAIL_VERIFICATION: 'false' })
+        .REQUIRE_EMAIL_VERIFICATION,
+    ).toBe(false);
+    expect(() =>
+      validateEnv({ ...valid, REQUIRE_EMAIL_VERIFICATION: 'no' }),
+    ).toThrow(/REQUIRE_EMAIL_VERIFICATION/);
+  });
+
+  it('does not need MAIL_FROM in production when verification is off', () => {
+    const production = {
+      ...valid,
+      NODE_ENV: 'production',
+      MEDIA_BUCKET: 'media-bucket',
+      CDN_URL: 'https://cdn.example.com',
+    };
+    expect(() => validateEnv(production)).toThrow(/MAIL_FROM/);
+    expect(
+      validateEnv({ ...production, REQUIRE_EMAIL_VERIFICATION: 'false' })
+        .REQUIRE_EMAIL_VERIFICATION,
+    ).toBe(false);
+  });
 });

@@ -132,6 +132,12 @@ aws sesv2 put-account-details --production-access-enabled --mail-type TRANSACTIO
 Until then, to test with your own inbox: `aws sesv2 create-email-identity --email-identity you@example.com`
 and click the link AWS sends.
 
+**Switching activation emails on and off.** `require_email_verification` in each environment's
+`settings` block sets the backend's `REQUIRE_EMAIL_VERIFICATION`. While it is `"false"`, sign-up
+signs people in straight away and no email is sent, so the site works before SES leaves the
+sandbox. Once production access is granted, set it to `"true"`, run `terraform apply`, and the
+next Jenkins deploy turns activation emails on. Accounts created while it was off stay active.
+
 ## Day-to-day
 
 - **Code changes** never need Terraform: Jenkins builds images and runs

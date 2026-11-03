@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { MailCheck } from 'lucide-react';
 import { z } from 'zod';
@@ -10,6 +11,7 @@ import { ResendLink } from './resend-link';
 type Errors = Partial<Record<'name' | 'email' | 'password', string>>;
 
 export function RegisterForm() {
+  const router = useRouter();
   const { register } = useAuthActions();
   const [sentTo, setSentTo] = useState('');
   const [errors, setErrors] = useState<Errors>({});
@@ -34,8 +36,12 @@ export function RegisterForm() {
 
     setSubmitting(true);
     try {
-      const { email } = await register(parsed.data);
-      setSentTo(email);
+      const result = await register(parsed.data);
+      if (result.verificationRequired) {
+        setSentTo(result.email);
+      } else {
+        router.push('/books');
+      }
     } catch (error) {
       setFormError(authErrorMessage(error));
       setSubmitting(false);

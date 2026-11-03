@@ -18,6 +18,10 @@ locals {
     deletion_protection = true
     force_destroy_media = false
     secret_recovery     = 7
+    # "false" while SES is in its sandbox: sign-up then signs people in
+    # without an activation email. Set "true" once SES production access is
+    # granted, then apply and deploy.
+    require_email_verification = "false"
   }
 }
 
@@ -131,6 +135,10 @@ module "ecs" {
   backend_secret_arn  = module.secrets.backend_secret_arn
   backend_secret_keys = var.backend_secret_keys
   redis_secret_arn    = module.secrets.redis_secret_arn
+
+  backend_extra_environment = {
+    REQUIRE_EMAIL_VERIFICATION = local.settings.require_email_verification
+  }
 
   # Target groups must be attached to the HTTPS listener before services use them
   depends_on = [module.alb]

@@ -32,6 +32,10 @@ export const loginSchema = z.object({
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 
+export type RegisterResult =
+  | { verificationRequired: true; email: string }
+  | { verificationRequired: false; user: User };
+
 const SESSION_KEY = ['session'] as const;
 
 /** The signed-in user, or null for guests. */
@@ -57,12 +61,17 @@ export function useAuthActions() {
   const setUser = (user: User | null) => queryClient.setQueryData(SESSION_KEY, user);
 
   return {
-    /** Creates the account and emails an activation link; does not sign in. */
-    async register(input: RegisterInput): Promise<{ email: string }> {
-      return api<{ email: string }>('/auth/register', {
+    /**
+     * Creates the account. Depending on the server's setting it either emails
+     * an activation link (no session yet) or signs the member in at once.
+     */
+    async register(input: RegisterInput): Promise<RegisterResult> {
+      const result = await api<RegisterResult>('/auth/register', {
         method: 'POST',
         body: JSON.stringify(input),
       });
+      if (!result.verificationRequired) setUser(result.user);
+      return result;
     },
     /** Uses the emailed link's token; activates the account and signs in. */
     async verifyEmail(token: string) {

@@ -13,9 +13,14 @@ export class UsersService {
     name: string;
     email: string;
     passwordHash: string;
+    emailVerified?: boolean;
   }): Promise<UserDocument> {
+    const { emailVerified = false, ...fields } = data;
     try {
-      return await this.users.create({ ...data, emailVerifiedAt: null });
+      return await this.users.create({
+        ...fields,
+        emailVerifiedAt: emailVerified ? new Date() : null,
+      });
     } catch (error) {
       if ((error as { code?: number }).code === DUPLICATE_KEY) {
         throw new ConflictException(
